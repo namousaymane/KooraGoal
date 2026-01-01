@@ -1,13 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { THEME } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function HomeScreen() {
+  const { theme } = useTheme();
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.content}>
-        <Text style={styles.text}>Home Screen</Text>
+        <Text style={[styles.text, { color: theme.text }]}>Home Screen</Text>
       </View>
     </SafeAreaView>
   );
@@ -16,7 +17,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.background, 
   },
   content: {
     flex: 1,
@@ -24,7 +24,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   text: {
-    color: THEME.text,
     fontSize: 20,
     fontWeight: 'bold',
   },
