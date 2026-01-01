@@ -1,44 +1,43 @@
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { THEME } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
-export default function Input({ 
-  icon, 
-  placeholder, 
-  value, 
-  onChangeText, 
-  isPassword = false // Par défaut, ce n'est pas un mot de passe
+export default function Input({
+  icon,
+  placeholder,
+  value,
+  onChangeText,
+  isPassword = false
 }) {
+  const { theme, isDarkMode } = useTheme();
   // État local pour gérer la visibilité du mot de passe
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.card, borderColor: isDarkMode ? '#333' : '#E5E5EA' }]}>
       {/* Icône à gauche (Mail, Cadenas...) */}
-      <Ionicons name={icon} size={20} color={THEME.textSecondary} style={styles.icon} />
-      
+      <Ionicons name={icon} size={20} color={theme.textSecondary} style={styles.icon} />
+
       <TextInput
-        style={styles.input}
+        style={[styles.input, { color: theme.text }]}
         placeholder={placeholder}
-        placeholderTextColor={THEME.textSecondary}
+        placeholderTextColor={theme.textSecondary}
         value={value}
         onChangeText={onChangeText}
-        // Si c'est un mot de passe ET qu'on ne veut pas le voir -> secureTextEntry est true
         secureTextEntry={isPassword && !isPasswordVisible}
         autoCapitalize="none"
       />
 
-      {/* Si c'est un champ mot de passe, on affiche l'œil à droite */}
       {isPassword && (
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setIsPasswordVisible(!isPasswordVisible)}
           style={styles.eyeIcon}
         >
           <Ionicons
-            name={isPasswordVisible ? 'eye-off' : 'eye'} // Change l'icône
+            name={isPasswordVisible ? 'eye-off' : 'eye'}
             size={20}
-            color={THEME.textSecondary}
+            color={theme.textSecondary}
           />
         </TouchableOpacity>
       )}
@@ -50,14 +49,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E1E', // Gris foncé
     borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
     height: 56,
   },
   icon: { marginLeft: 16, marginRight: 12 },
-  input: { flex: 1, color: THEME.text, fontSize: 16 },
+  input: { flex: 1, fontSize: 16 },
   eyeIcon: { padding: 10, marginRight: 6 },
 });
