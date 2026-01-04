@@ -8,24 +8,14 @@ import { auth } from '../services/firebaseConfig';
 import { signOut } from 'firebase/auth';
 import { useTheme } from '../theme/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import LanguageSelectorModal from '../components/LanguageSelectorModal';
 
 export default function ProfileScreen() {
     const navigation = useNavigation();
     const { theme, isDarkMode, toggleTheme } = useTheme();
     const { t, language, changeLanguage } = useLanguage();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-
-    const handleLanguageChange = () => {
-        Alert.alert(
-            t('alert_language_title'),
-            t('alert_language_message'),
-            [
-                { text: "Français", onPress: () => changeLanguage('fr') },
-                { text: "English", onPress: () => changeLanguage('en') },
-                { text: t('cancel'), style: "cancel" }
-            ]
-        );
-    };
+    const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
 
     // Local state for user data to ensure it refreshes on focus
     const [userData, setUserData] = useState({
@@ -123,7 +113,15 @@ export default function ProfileScreen() {
 
                 {/* Preferences Section */}
                 {renderSectionHeader(t('preferences_section'))}
-                {renderMenuItem("language-outline", t('language'), handleLanguageChange, <Text style={{ color: theme.textSecondary, marginRight: 10 }}>{language === 'fr' ? 'Français' : 'English'}</Text>)}
+                {renderMenuItem("language-outline", t('language'), () => setLanguageModalVisible(true),
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 18, marginRight: 8 }}>{language === 'fr' ? '🇫🇷' : '🇬🇧'}</Text>
+                        <Text style={{ color: theme.textSecondary, marginRight: 5 }}>
+                            {language === 'fr' ? 'Français' : 'English'}
+                        </Text>
+                        <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+                    </View>
+                )}
                 {renderMenuItem("notifications-outline", t('notifications'), () => setNotificationsEnabled(!notificationsEnabled), (
                     <Switch
                         value={notificationsEnabled}
@@ -140,6 +138,14 @@ export default function ProfileScreen() {
                         thumbColor={isDarkMode ? "#fff" : "#f4f3f4"}
                     />
                 ))}
+
+                {/* Modal */}
+                <LanguageSelectorModal
+                    visible={isLanguageModalVisible}
+                    onClose={() => setLanguageModalVisible(false)}
+                    onSelect={changeLanguage}
+                    currentLanguage={language}
+                />
 
                 {/* Support Section */}
                 {renderSectionHeader(t('support_section'))}
