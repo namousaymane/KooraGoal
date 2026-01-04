@@ -16,6 +16,8 @@ export const translations = {
         rate_app: "Noter l'application",
         delete_account: "Supprimer mon compte",
         sign_out: "Se déconnecter",
+        logout_confirm_title: "Déconnexion",
+        logout_confirm_desc: "Êtes-vous sûr de vouloir vous déconnecter de votre compte ?",
         version: "Version",
 
         // Navigation
@@ -80,6 +82,8 @@ export const translations = {
         rate_app: "Rate App",
         delete_account: "Delete Account",
         sign_out: "Sign Out",
+        logout_confirm_title: "Sign Out",
+        logout_confirm_desc: "Are you sure you want to sign out of your account?",
         version: "Version",
 
         // Navigation

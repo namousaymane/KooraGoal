@@ -9,6 +9,7 @@ import { signOut } from 'firebase/auth';
 import { useTheme } from '../theme/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import LanguageSelectorModal from '../components/LanguageSelectorModal';
+import LogoutModal from '../components/LogoutModal';
 
 export default function ProfileScreen() {
     const navigation = useNavigation();
@@ -16,6 +17,7 @@ export default function ProfileScreen() {
     const { t, language, changeLanguage } = useLanguage();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
+    const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
 
     // Local state for user data to ensure it refreshes on focus
     const [userData, setUserData] = useState({
@@ -37,26 +39,18 @@ export default function ProfileScreen() {
         }, [])
     );
 
-    const handleSignOut = async () => {
-        Alert.alert(
-            "Déconnexion",
-            "Êtes-vous sûr de vouloir vous déconnecter ?",
-            [
-                { text: "Annuler", style: "cancel" },
-                {
-                    text: "Se déconnecter",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await signOut(auth);
-                        } catch (error) {
-                            console.error(error);
-                            Alert.alert('Erreur', "Impossible de se déconnecter");
-                        }
-                    }
-                }
-            ]
-        );
+    const handleSignOut = () => {
+        setLogoutModalVisible(true);
+    };
+
+    const confirmSignOut = async () => {
+        setLogoutModalVisible(false);
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error(error);
+            Alert.alert(t('error') || 'Erreur', t('logout_error') || "Impossible de se déconnecter");
+        }
     };
 
     const renderSectionHeader = (title) => (
@@ -139,12 +133,18 @@ export default function ProfileScreen() {
                     />
                 ))}
 
-                {/* Modal */}
+                {/* Modals */}
                 <LanguageSelectorModal
                     visible={isLanguageModalVisible}
                     onClose={() => setLanguageModalVisible(false)}
                     onSelect={changeLanguage}
                     currentLanguage={language}
+                />
+
+                <LogoutModal
+                    visible={isLogoutModalVisible}
+                    onClose={() => setLogoutModalVisible(false)}
+                    onLogout={confirmSignOut}
                 />
 
                 {/* Support Section */}
