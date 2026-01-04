@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, LayoutAnimation, Platform, UIManager, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,49 +12,33 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// --- 1. MOCK DATA (Mêmes données) ---
+// --- 1. MOCK DATA (Note: J'ai changé les dates pour qu'elles correspondent à "Aujourd'hui" pour le test) ---
+const TODAY_ISO = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 const MOCK_MATCHES = [
-  // PREMIER LEAGUE
   {
     id: '1',
     league: { id: 39, name: 'Premier League', logo: 'https://media.api-sports.io/football/leagues/39.png' },
     teams: { home: { name: 'Man United', logo: 'https://media.api-sports.io/football/teams/33.png' }, away: { name: 'Man City', logo: 'https://media.api-sports.io/football/teams/50.png' } },
     goals: { home: 0, away: 0 },
-    fixture: { status: { short: 'NS' }, date: '2023-10-25' }
+    fixture: { status: { short: 'NS' }, date: TODAY_ISO } // Match d'aujourd'hui
   },
   {
     id: '2',
     league: { id: 39, name: 'Premier League', logo: 'https://media.api-sports.io/football/leagues/39.png' },
     teams: { home: { name: 'Arsenal', logo: 'https://media.api-sports.io/football/teams/42.png' }, away: { name: 'Chelsea', logo: 'https://media.api-sports.io/football/teams/49.png' } },
     goals: { home: 2, away: 1 },
-    fixture: { status: { short: 'FT' }, date: '2023-10-25' }
+    fixture: { status: { short: 'FT' }, date: '2023-10-25' } // Match passé
   },
-  // CHAMPIONS LEAGUE
   {
     id: '3',
     league: { id: 2, name: 'Champions League', logo: 'https://media.api-sports.io/football/leagues/2.png' },
     teams: { home: { name: 'Real Madrid', logo: 'https://media.api-sports.io/football/teams/541.png' }, away: { name: 'Napoli', logo: 'https://media.api-sports.io/football/teams/492.png' } },
     goals: { home: 1, away: 1 },
-    fixture: { status: { short: '2H', elapsed: 78 }, date: '2023-10-25' }
+    fixture: { status: { short: '2H', elapsed: 78 }, date: TODAY_ISO } // Match d'aujourd'hui
   },
-  {
-    id: '4',
-    league: { id: 2, name: 'Champions League', logo: 'https://media.api-sports.io/football/leagues/2.png' },
-    teams: { home: { name: 'Bayern', logo: 'https://media.api-sports.io/football/teams/21.png' }, away: { name: 'PSG', logo: 'https://media.api-sports.io/football/teams/85.png' } },
-    goals: { home: 3, away: 0 },
-    fixture: { status: { short: '1H', elapsed: 35 }, date: '2023-10-25' }
-  },
-  // LIGUE 1
-  {
-    id: '5',
-    league: { id: 61, name: 'Ligue 1', logo: 'https://media.api-sports.io/football/leagues/61.png' },
-    teams: { home: { name: 'Marseille', logo: 'https://media.api-sports.io/football/teams/81.png' }, away: { name: 'Lyon', logo: 'https://media.api-sports.io/football/teams/80.png' } },
-    goals: { home: 0, away: 0 },
-    fixture: { status: { short: 'NS' }, date: '2023-10-25' }
-  }
 ];
 
-// --- 2. NOUVEAU COMPOSANT : LE GROUPE DE LIGUE (Header + Liste) ---
+// --- COMPOSANT LEAGUE GROUP (Inchangé) ---
 const LeagueGroup = ({ item, theme, isDarkMode }) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -65,7 +49,6 @@ const LeagueGroup = ({ item, theme, isDarkMode }) => {
 
   return (
     <View style={[styles.leagueCardContainer, { backgroundColor: theme.card, borderColor: isDarkMode ? '#2A2A2A' : '#E5E5EA' }]}>
-      {/* HEADER CLIQUABLE */}
       <TouchableOpacity onPress={toggleCollapse} style={styles.sectionHeader} activeOpacity={0.7}>
         <View style={styles.sectionHeaderLeft}>
           <Image source={{ uri: item.logo }} style={styles.leagueLogo} />
@@ -74,14 +57,8 @@ const LeagueGroup = ({ item, theme, isDarkMode }) => {
             <Text style={[styles.badgeText, { color: theme.primary }]}>{item.data.length}</Text>
           </View>
         </View>
-        <Ionicons
-          name={collapsed ? "chevron-down" : "chevron-up"}
-          size={20}
-          color={theme.textSecondary}
-        />
+        <Ionicons name={collapsed ? "chevron-down" : "chevron-up"} size={20} color={theme.textSecondary} />
       </TouchableOpacity>
-
-      {/* CONTENU (Liste des matchs) - Caché si collapsed est true */}
       {!collapsed && (
         <View style={styles.matchesList}>
           {item.data.map((match) => (
@@ -97,33 +74,80 @@ const LeagueGroup = ({ item, theme, isDarkMode }) => {
 
 export default function MatchesScreen() {
   const { theme, isDarkMode } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage(); // language sert pour le formatage des dates
+  
   const [groupedMatches, setGroupedMatches] = useState([]);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // 1. État pour la date sélectionnée (par défaut : aujourd'hui YYYY-MM-DD)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [calendarDates, setCalendarDates] = useState([]);
+  const flatListRef = useRef(null);
 
-  const DATES = [
-    { day: 'Sat', date: '28 Oct' },
-    { day: 'Sun', date: '29 Oct' },
-    { day: 'Mon', date: '30 Oct' },
-    { day: t('today'), date: '31 Oct', active: true },
-    { day: 'Wed', date: '01 Nov' },
-    { day: 'Thu', date: '02 Nov' },
-    { day: 'Fri', date: '03 Nov' },
-  ];
-
+  // 2. Génération dynamique des dates
   useEffect(() => {
-    // Basic filtering logic
+    const generateDates = () => {
+      const dates = [];
+      // On génère par exemple 3 jours avant et 7 jours après
+      for (let i = -3; i <= 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        
+        const isoDate = d.toISOString().split('T')[0];
+        
+        // Formatage pour l'affichage (ex: "Lun", "30 Oct")
+        // Utilisation de Intl.DateTimeFormat pour supporter FR/EN automatiquement
+        const dayName = new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short' }).format(d);
+        const dayNum = new Intl.DateTimeFormat(language === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short' }).format(d);
+        
+        // Vérifier si c'est aujourd'hui pour afficher "Auj" ou "Today"
+        const isToday = i === 0;
+        const displayDay = isToday ? t('today') : dayName.charAt(0).toUpperCase() + dayName.slice(1);
+
+        dates.push({
+          fullDate: isoDate, // Pour la logique (API)
+          displayDay: displayDay, // Pour l'affichage (Jeu, Ven, Auj)
+          displayDate: dayNum, // Pour l'affichage (31 Oct)
+          isToday: isToday
+        });
+      }
+      return dates;
+    };
+
+    setCalendarDates(generateDates());
+  }, [language, t]); // Recalcule si la langue change
+
+  // 3. Scroll automatique vers "Aujourd'hui" au chargement
+  useEffect(() => {
+    if (calendarDates.length > 0 && flatListRef.current) {
+        // Index 3 correspond à "Aujourd'hui" car on commence la boucle à -3
+        setTimeout(() => {
+            flatListRef.current.scrollToIndex({ index: 3, animated: true, viewPosition: 0.5 });
+        }, 500);
+    }
+  }, [calendarDates]);
+
+  // 4. Filtrage des matchs
+  useEffect(() => {
     const filteredMatches = MOCK_MATCHES.filter(match => {
-      if (!searchQuery) return true;
+      // Filtre Recherche
       const lowQuery = searchQuery.toLowerCase();
-      return (
+      const matchesSearch = !searchQuery || (
         match.teams.home.name.toLowerCase().includes(lowQuery) ||
         match.teams.away.name.toLowerCase().includes(lowQuery) ||
         match.league.name.toLowerCase().includes(lowQuery)
       );
+
+      // Filtre Date
+      // Note: match.fixture.date doit être au format YYYY-MM-DD ou ISO
+      const matchDate = match.fixture.date.split('T')[0]; 
+      const matchesDate = matchDate === selectedDate;
+
+      return matchesSearch && matchesDate;
     });
 
+    // Groupement par ligue
     const grouped = Object.values(filteredMatches.reduce((acc, match) => {
       if (!acc[match.league.id]) {
         acc[match.league.id] = {
@@ -138,7 +162,7 @@ export default function MatchesScreen() {
     }, {}));
 
     setGroupedMatches(grouped);
-  }, [searchQuery]);
+  }, [searchQuery, selectedDate]); // Déclenche quand la date ou la recherche change
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
@@ -158,17 +182,14 @@ export default function MatchesScreen() {
           <TouchableOpacity style={styles.iconBtn}><Ionicons name="trophy-outline" size={22} color={theme.text} /></TouchableOpacity>
           <TouchableOpacity
             style={styles.iconBtn}
-            onPress={() => {
-              // Placeholder for Calendar integration
-              alert(t('calendar_coming_soon'));
-            }}
+            onPress={() => alert(t('calendar_coming_soon'))}
           >
             <Ionicons name="calendar-outline" size={22} color={theme.text} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* SEARCH BAR (Toggled) */}
+      {/* SEARCH BAR */}
       {searchVisible && (
         <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: isDarkMode ? '#333' : '#E5E5EA' }]}>
           <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />
@@ -182,34 +203,63 @@ export default function MatchesScreen() {
         </View>
       )}
 
-      {/* CALENDAR SLIDER */}
+      {/* DYNAMIC CALENDAR SLIDER */}
       <View style={styles.calendarContainer}>
         <FlatList
+          ref={flatListRef}
           horizontal
-          data={DATES}
+          data={calendarDates}
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.day}
+          keyExtractor={(item) => item.fullDate}
           contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={[
-              styles.dateItem,
-              { backgroundColor: theme.card, borderColor: isDarkMode ? '#333' : '#E5E5EA' },
-              item.active && { backgroundColor: theme.primary, borderColor: theme.primary }
-            ]}>
-              <Text style={[styles.dateDay, { color: theme.textSecondary }, item.active && styles.dateTextActive]}>{item.day}</Text>
-              <Text style={[styles.dateNum, { color: theme.text }, item.active && styles.dateTextActive]}>{item.date}</Text>
-            </TouchableOpacity>
+          getItemLayout={(data, index) => (
+            { length: 70, offset: 70 * index, index } // Aide pour le scrollToIndex (largeur approx de l'item + margin)
           )}
+          renderItem={({ item }) => {
+            const isActive = item.fullDate === selectedDate;
+            return (
+              <TouchableOpacity 
+                style={[
+                  styles.dateItem,
+                  { backgroundColor: theme.card, borderColor: isDarkMode ? '#333' : '#E5E5EA' },
+                  isActive && { backgroundColor: theme.primary, borderColor: theme.primary }
+                ]}
+                onPress={() => setSelectedDate(item.fullDate)}
+              >
+                <Text style={[
+                    styles.dateDay, 
+                    { color: theme.textSecondary }, 
+                    isActive && styles.dateTextActive
+                ]}>
+                    {item.displayDay}
+                </Text>
+                <Text style={[
+                    styles.dateNum, 
+                    { color: theme.text }, 
+                    isActive && styles.dateTextActive
+                ]}>
+                    {item.displayDate}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
         />
       </View>
 
-      {/* LISTE PRINCIPALE DES LIGUES */}
+      {/* MATCH LIST OR EMPTY STATE */}
       <FlatList
         data={groupedMatches}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => <LeagueGroup item={item} theme={theme} isDarkMode={isDarkMode} />}
         contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+                <Text style={{color: theme.textSecondary, textAlign: 'center', marginTop: 50}}>
+                    Aucun match pour cette date
+                </Text>
+            </View>
+        }
       />
 
     </SafeAreaView>
@@ -217,67 +267,42 @@ export default function MatchesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  // Styles Top Bar & Calendar (Inchangés)
+  container: { flex: 1 },
+  // ... (Garde tes styles existants, ils sont bons)
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
   logoContainer: { flexDirection: 'row', alignItems: 'center' },
-  appTitle: { fontSize: 20, fontWeight: '900', marginLeft: 8, fontStyle: 'italic', letterSpacing: -0.5 },
   iconsContainer: { flexDirection: 'row' },
   iconBtn: { marginLeft: 16 },
-
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 10,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 10,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1,
   },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16 },
-
+  
+  // Styles Calendrier
   calendarContainer: { paddingVertical: 15 },
-  dateItem: { borderRadius: 12, paddingVertical: 10, paddingHorizontal: 16, marginRight: 10, alignItems: 'center', borderWidth: 1 },
-  dateDay: { fontSize: 12, marginBottom: 4 },
-  dateNum: { fontWeight: 'bold', fontSize: 14 },
-  dateTextActive: { color: '#000', fontWeight: 'bold' },
-
-  // --- NOUVEAUX STYLES POUR LE GROUPEMENT ---
-
-  // L'encadré principal autour de la ligue
-  leagueCardContainer: {
-    borderRadius: 20,
-    marginBottom: 20,
-    padding: 10,
-    borderWidth: 1,
-    overflow: 'hidden', // Pour que l'animation soit propre
+  dateItem: { 
+    borderRadius: 12, 
+    paddingVertical: 10, 
+    width: 60, // Fixer la largeur aide pour le scrollToIndex
+    marginRight: 10, 
+    alignItems: 'center', 
+    borderWidth: 1 
   },
+  dateDay: { fontSize: 11, marginBottom: 4, textTransform: 'capitalize' },
+  dateNum: { fontWeight: 'bold', fontSize: 13 },
+  dateTextActive: { color: '#FFF', fontWeight: 'bold' }, // Blanc sur fond primaire
 
-  // Header de la section
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginBottom: 5,
-  },
+  // Styles League & Match (inchangés)
+  leagueCardContainer: { borderRadius: 20, marginBottom: 20, padding: 10, borderWidth: 1, overflow: 'hidden' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, marginBottom: 5 },
   sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   leagueLogo: { width: 28, height: 28, marginRight: 12, borderRadius: 14, backgroundColor: '#fff' },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', marginRight: 10 },
   badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 11, fontWeight: 'bold' },
-
-  // Liste des matchs à l'intérieur
-  matchesList: {
-    marginTop: 5,
-  },
-  matchWrapper: {
-    marginBottom: 4, // Petit espace entre les cartes de match
-  }
+  matchesList: { marginTop: 5 },
+  matchWrapper: { marginBottom: 4 },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center' }
 });
