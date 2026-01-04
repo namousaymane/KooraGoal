@@ -1,4 +1,6 @@
-const API_KEY = 'c89a4874b0mshcb3b8b0fe04af49p1b7f25jsn90ef24f845e1';
+import { MOCK_LIVE_MATCHES, MOCK_UPCOMING_MATCHES, MOCK_MATCHES_BY_DATE } from './mockData';
+
+const API_KEY = process.env.EXPO_PUBLIC_RAPIDAPI_KEY;
 const API_HOST = 'football-api-7.p.rapidapi.com';
 const BASE_URL = 'https://football-api-7.p.rapidapi.com/api/v3';
 
@@ -16,13 +18,21 @@ const fetchFromApi = async (endpoint, params = {}) => {
         });
 
         if (!response.ok) {
+            // Throw error to trigger fallback
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const json = await response.json();
         return json.response;
     } catch (error) {
-        console.error('API Request Error:', error);
+        console.warn('API Request Failed, using Mock Data:', error.message);
+
+        // --- FALLBACK MOCK DATA ---
+        if (endpoint === 'fixtures') {
+            if (params.live) return 'MOCK_LIVE';
+            if (params.next) return 'MOCK_UPCOMING';
+            if (params.date) return 'MOCK_DATE';
+        }
         return [];
     }
 };
@@ -31,6 +41,8 @@ export const getLiveMatches = async () => {
     try {
         // Fetch all live matches
         const data = await fetchFromApi('fixtures', { live: 'all' });
+
+        if (data === 'MOCK_LIVE') return MOCK_LIVE_MATCHES;
 
         // Map to app format
         return data.map(match => ({
@@ -47,7 +59,7 @@ export const getLiveMatches = async () => {
         }));
     } catch (error) {
         console.error('getLiveMatches Error:', error);
-        return [];
+        return MOCK_LIVE_MATCHES;
     }
 };
 
@@ -55,6 +67,8 @@ export const getUpcomingMatches = async () => {
     try {
         // Fetch next 10 matches relative to current time
         const data = await fetchFromApi('fixtures', { next: '20' });
+
+        if (data === 'MOCK_UPCOMING') return MOCK_UPCOMING_MATCHES;
 
         return data.map(match => {
             const date = new Date(match.fixture.date);
@@ -74,7 +88,39 @@ export const getUpcomingMatches = async () => {
         });
     } catch (error) {
         console.error('getUpcomingMatches Error:', error);
-        return [];
+        return MOCK_UPCOMING_MATCHES;
+    }
+};
+
+export const getMatchesByDate = async (date) => {
+    try {
+        const data = await fetchFromApi('fixtures', { date: date });
+
+        if (data === 'MOCK_DATE') return MOCK_MATCHES_BY_DATE;
+
+        return data.map(match => ({
+            id: match.fixture.id.toString(),
+            league: {
+                id: match.league.id,
+                name: match.league.name,
+                logo: match.league.logo
+            },
+            teams: {
+                home: { name: match.teams.home.name, logo: match.teams.home.logo },
+                away: { name: match.teams.away.name, logo: match.teams.away.logo }
+            },
+            goals: {
+                home: match.goals.home,
+                away: match.goals.away
+            },
+            fixture: {
+                status: { short: match.fixture.status.short, elapsed: match.fixture.status.elapsed },
+                date: match.fixture.date
+            }
+        }));
+    } catch (error) {
+        console.error('getMatchesByDate Error:', error);
+        return MOCK_MATCHES_BY_DATE;
     }
 };
 
@@ -234,7 +280,7 @@ export const getNews = async () => {
 
                 // --- LIGUE 1 ---
                 {
-                    id: '505', // Changed from 5 to 55 to avoid duplicate key error
+                    id: '5055', // Changed to 5055 to avoid duplicate key error with id 505
                     title: 'Osimhen release clause revealed: Premier League clubs on alert.',
                     image: 'https://images.unsplash.com/photo-IorqsMssQH0?w=800&auto=format&fit=crop&q=60', // User Unsplash (Blue/Grey Ball)
                     source: 'Sky Italia',
