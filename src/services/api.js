@@ -92,8 +92,11 @@ export const getLiveMatches = async () => {
 };
 
 export const getMatchesByDate = async (date) => {
- 
-    const data = await fetchFromApi('fixtures', { date: date }, 3600);
+    const today = new Date().toISOString().split('T')[0];
+    const isToday = date === today;
+    const ttl = isToday ? 60 : 3600; 
+
+    const data = await fetchFromApi('fixtures', { date: date }, ttl);
 
     return data.map(match => ({
         id: match.fixture.id.toString(),
