@@ -1,167 +1,203 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    Image,
-    TouchableOpacity,
-    Dimensions,
-    ImageBackground
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+  ImageBackground
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native'; 
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// Contextes existants
 import { useTheme } from '../theme/ThemeContext';
-import { auth } from '../services/firebaseConfig'; 
+import { useLanguage } from '../context/LanguageContext';
+
+// Composants
+import RotatingLogo from '../components/RotatingLogo';
 
 const { width } = Dimensions.get('window');
 
-// Mock pour le test
-const MOCK_LIVE_MATCHES = [
-    { id: '1', home: 'PSG', away: 'OM', score: '2 - 1', time: '72\'', league: 'Ligue 1', homeLogo: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1024px-Paris_Saint-Germain_Logo.svg.png', awayLogo: 'https://upload.wikimedia.org/wikipedia/fr/thumb/4/43/Logo_Olympique_de_Marseille.svg/1200px-Logo_Olympique_de_Marseille.svg.png' },
-    { id: '2', home: 'Man City', away: 'Arsenal', score: '0 - 0', time: '15\'', league: 'Premier League', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/1200px-Manchester_City_FC_badge.svg.png', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/1200px-Arsenal_FC.svg.png' },
-];
+// --- COMPOSANTS UI ---
 
-export default function HomeScreen({ navigation }) {
-    const { theme, isDarkMode } = useTheme();
-    
-    const [userData, setUserData] = useState({
-        displayName: '',
-        photoURL: null,
-    });
-
-    useFocusEffect(
-        useCallback(() => {
-            const currentUser = auth.currentUser;
-            if (currentUser) {
-                setUserData({
-                    displayName: currentUser.displayName || 'Utilisateur',
-                    photoURL: currentUser.photoURL,
-                });
-            }
-        }, [])
-    );
-
-    const renderHeader = () => (
-        <View style={styles.headerContainer}>
-            <View style={{flex: 1, marginRight: 10}}>
-                <Text style={[styles.greetingName, { color: theme.text }]} numberOfLines={1}>
-                    Bonjour {userData.displayName} 👋
-                </Text>
-            </View>
-            
-            <TouchableOpacity 
-                style={[styles.profileButton, { backgroundColor: theme.card }]}
-                onPress={() => navigation.navigate('Profile')} 
-            >
-                {userData.photoURL ? (
-                    <Image 
-                        source={{ uri: userData.photoURL }} 
-                        style={styles.headerAvatar} 
-                    />
-                ) : (
-                    <Ionicons name="person" size={20} color={theme.primary} />
-                )}
-            </TouchableOpacity>
+// 1. Carte Hero (Match Center)
+const ModernCard = ({ title, subtitle, icon, onPress, theme, height = 160, backgroundImage }) => {
+  const CardContent = () => (
+    <View style={styles.cardInner}>
+      <View style={styles.cardTextContainer}>
+        <View style={styles.iconCircle}>
+          {icon}
         </View>
-    );
-
-    const renderLiveMatchCard = (item) => (
-        <TouchableOpacity key={item.id} style={[styles.liveCard, { backgroundColor: theme.card }]} activeOpacity={0.9}>
-            <View style={styles.liveHeader}>
-                <View style={styles.liveBadge}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>LIVE</Text>
-                </View>
-                <Text style={[styles.leagueName, { color: theme.textSecondary }]}>{item.league}</Text>
-            </View>
-
-            <View style={styles.scoreContainer}>
-                <View style={styles.teamContainer}>
-                    <Image source={{ uri: item.homeLogo }} style={styles.teamLogo} resizeMode="contain" />
-                    <Text style={[styles.teamName, { color: theme.text }]}>{item.home}</Text>
-                </View>
-
-                <View style={styles.scoreBoard}>
-                    <Text style={[styles.scoreText, { color: theme.text }]}>{item.score}</Text>
-                    <Text style={[styles.matchTime, { color: theme.primary }]}>{item.time}</Text>
-                </View>
-
-                <View style={styles.teamContainer}>
-                    <Image source={{ uri: item.awayLogo }} style={styles.teamLogo} resizeMode="contain" />
-                    <Text style={[styles.teamName, { color: theme.text }]}>{item.away}</Text>
-                </View>
-            </View>
-        </TouchableOpacity>
-    );
-
-    const renderSectionTitle = (title, icon) => (
-        <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
-            {icon && <MaterialCommunityIcons name={icon} size={20} color={theme.primary} />}
+        <View>
+          <Text style={[styles.cardTitle, { color: '#FFF' }]}>{title}</Text>
+          <Text style={[styles.cardSubtitle, { color: 'rgba(255,255,255,0.8)' }]}>{subtitle}</Text>
         </View>
-    );
+      </View>
+    </View>
+  );
 
-    const renderMyTeamCard = () => (
-        <TouchableOpacity style={[styles.myTeamCard, { backgroundColor: theme.primary }]} activeOpacity={0.9}>
-            <ImageBackground 
-                source={{uri: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2070&auto=format&fit=crop'}} 
-                style={styles.myTeamBackground}
-                imageStyle={{ borderRadius: 16, opacity: 0.3 }}
-            >
-                <View style={styles.myTeamContent}>
-                    <View>
-                        <Text style={styles.nextMatchLabel}>Prochain match</Text>
-                        <Text style={styles.nextMatchVs}>Real Madrid vs PSG</Text>
-                        <Text style={styles.nextMatchDate}>Demain, 21:00</Text>
-                    </View>
-                    <View style={styles.bellButton}>
-                        <Ionicons name="notifications-outline" size={20} color="#FFF" />
-                    </View>
-                </View>
-            </ImageBackground>
-        </TouchableOpacity>
-    );
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPress}
+      style={[
+        styles.card,
+        { 
+          backgroundColor: theme.card, 
+          height: height,
+          shadowColor: theme.text,
+        }
+      ]}
+    >
+      {backgroundImage ? (
+        <ImageBackground source={{ uri: backgroundImage }} style={styles.imageBackground} imageStyle={{ borderRadius: 24 }}>
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.85)']}
+            style={styles.gradientOverlay}
+          >
+            <CardContent />
+          </LinearGradient>
+        </ImageBackground>
+      ) : (
+        <View style={[styles.cardNoImage, { backgroundColor: theme.card }]}>
+           <CardContent /> 
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-            <StatusBar style={isDarkMode ? "light" : "dark"} />
-            
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                {renderHeader()}
+// 2. Carte Info (News)
+const InfoCard = ({ title, subtitle, icon, theme, onPress }) => (
+    <TouchableOpacity 
+        style={[styles.infoCard, { backgroundColor: theme.card }]} 
+        onPress={onPress}
+        activeOpacity={0.8}
+    >
+        <View style={styles.infoContent}>
+            <View style={[styles.infoIconBox, { backgroundColor: theme.background }]}>
+                {icon}
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.infoTitle, { color: theme.text }]}>{title}</Text>
+                <Text style={[styles.infoSub, { color: theme.textSecondary }]}>{subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+        </View>
+    </TouchableOpacity>
+);
 
-                {renderSectionTitle("Matchs en direct", "fire")}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-                    {MOCK_LIVE_MATCHES.map(renderLiveMatchCard)}
-                </ScrollView>
+// 3. Bouton Carré (Grille)
+const SquareButton = ({ title, icon, color, theme, onPress }) => (
+  <TouchableOpacity 
+    style={[styles.squareBtn, { backgroundColor: theme.card }]} 
+    onPress={onPress}
+    activeOpacity={0.8}
+  >
+    <View style={[styles.squareIconContainer, { backgroundColor: color + '20' }]}> 
+       {/* Ajoute transparence hex '20' */}
+      {React.cloneElement(icon, { color: color })}
+    </View>
+    <Text style={[styles.squareTitle, { color: theme.text }]}>{title}</Text>
+  </TouchableOpacity>
+);
 
-                {renderSectionTitle("Mon Équipe", "shield-account")}
-                {renderMyTeamCard()}
+export default function HomeScreen() {
+  const navigation = useNavigation();
+  const { theme } = useTheme();
+  const { t, language } = useLanguage();
+  
+  // Données utilisateur (Statique pour l'instant car pas d'AuthContext)
+  const userName = "Champion"; 
+  const welcomeText = language === 'fr' ? "Bienvenue," : "Welcome,";
 
-                <View style={styles.quickMenuContainer}>
-                    {[
-                        { label: 'Classement', icon: 'trophy-outline', color: '#FFB302' },
-                        { label: 'Calendrier', icon: 'calendar-outline', color: '#4CD964' },
-                        { label: 'Stats', icon: 'bar-chart-outline', color: '#5856D6' },
-                        { label: 'Vidéos', icon: 'videocam-outline', color: '#FF2D55' },
-                    ].map((menu, index) => (
-                        <TouchableOpacity 
-                            key={index} 
-                            style={[styles.menuItem, { backgroundColor: theme.card, borderColor: isDarkMode ? '#333' : '#E5E5EA' }]}
-                        >
-                            <View style={[styles.iconContainer, { backgroundColor: menu.color + '20' }]}>
-                                <Ionicons name={menu.icon} size={24} color={menu.color} />
-                            </View>
-                            <Text style={[styles.menuText, { color: theme.text }]}>{menu.label}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      
+      {/* HEADER */}
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.greeting, { color: theme.textSecondary }]}>
+             {welcomeText}
+          </Text>
+          <Text style={[styles.userName, { color: theme.text }]}>
+             {userName} 👋
+          </Text>
+        </View>
+      </View>
 
-            </ScrollView>
-        </SafeAreaView>
-    );
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+      >
+        
+        {/* MATCH CENTER (HERO IMAGE) */}
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>Match Center</Text>
+        <ModernCard
+          title={t('live_matches') || "Live Matches"} 
+          subtitle={t('upcoming_matches') || "Upcoming Matches"}
+          theme={theme}
+          height={200}
+          // Image de stade sombre et pro
+          backgroundImage="https://images.unsplash.com/photo-1522778119026-d647f0565c6a?q=80&w=2070&auto=format&fit=crop"
+          icon={<Ionicons name="football" size={30} color="#FFF" />}
+          onPress={() => navigation.navigate('Matches')}
+        />
+
+        <View style={styles.spacer} />
+
+        {/* NEWS SECTION */}
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>{t('nav_news') || "News"}</Text>
+        <InfoCard
+          title={t('cat_latest') || "Latest"} 
+          subtitle={t('search_news') || "Read the news"}
+          theme={theme}
+          icon={<MaterialCommunityIcons name="newspaper-variant-outline" size={24} color={theme.primary} />}
+          onPress={() => navigation.navigate('News')}
+        />
+
+        <View style={styles.spacer} />
+
+        {/* EXPLORER GRID */}
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>Explorer</Text>
+        <View style={styles.gridContainer}>
+          <SquareButton 
+            title={t('cat_leagues') || "Leagues"} 
+            theme={theme} 
+            color="#FFD700" 
+            icon={<Ionicons name="trophy" size={24} />} 
+            onPress={() => console.log('Ligues')}
+          />
+          <SquareButton 
+            title={t('nav_favorites') || "Favorites"} 
+            theme={theme} 
+            color="#FF6B6B" 
+            icon={<Ionicons name="heart" size={24} />} 
+            onPress={() => navigation.navigate('Favorites')}
+          />
+          <SquareButton 
+            title={t('cat_transfers') || "Transfers"} 
+            theme={theme} 
+            color="#4ECDC4"
+            icon={<Ionicons name="swap-horizontal" size={24} />} 
+            onPress={() => console.log('Transferts')}
+          />
+          <SquareButton 
+            title={t('nav_profile') || "Profile"} 
+            theme={theme} 
+            color="#A06CD5" // Violet
+            icon={<Ionicons name="person" size={24} />} 
+            onPress={() => navigation.navigate('ProfileTab')}
+          />
+        </View>
+
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -169,207 +205,164 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 30,
-  },
- 
-  headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    marginBottom: 10,
-  },
-  greetingSub: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  greetingName: {
-    fontSize: 24,
-    fontWeight: '800', 
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    padding: 0, 
-    overflow: 'hidden',
-  },
-  headerAvatar: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    padding: 20,
+    paddingBottom: 40,
   },
   
-  // TITRES DE SECTION
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-    marginTop: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-
-  // LIVE CARDS
-  horizontalScroll: {
-    paddingLeft: 20,
-    marginBottom: 20,
-  },
-  liveCard: {
-    width: width * 0.75,
-    padding: 16,
-    borderRadius: 16,
-    marginRight: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  liveHeader: {
+  // Header Styles
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  liveBadge: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFF',
-    marginRight: 6,
-  },
-  liveText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  leagueName: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  teamContainer: {
-    alignItems: 'center',
-    width: '30%',
-  },
-  teamLogo: {
-    width: 40,
-    height: 40,
-    marginBottom: 8,
-  },
-  teamName: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  scoreBoard: {
-    alignItems: 'center',
-  },
-  scoreText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  matchTime: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-
-  // MY TEAM CARD
-  myTeamCard: {
-    marginHorizontal: 20,
-    height: 120,
-    borderRadius: 16,
     marginBottom: 25,
-    overflow: 'hidden',
+    marginTop: 10,
+    paddingHorizontal: 10, // Petit padding latéral pour aligner avec le reste si besoin
   },
-  myTeamBackground: {
+  greeting: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  userName: {
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  logoContainer: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    padding: 8,
+    borderRadius: 50,
+  },
+
+  // Section Styles
+  sectionLabel: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 15,
+    marginLeft: 4,
+  },
+  spacer: {
+    height: 30,
+  },
+
+  // Hero Card Styles
+  card: {
+    width: '100%',
+    borderRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  imageBackground: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
   },
-  myTeamContent: {
+  gradientOverlay: {
+    flex: 1,
+    borderRadius: 24,
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  cardInner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
-  nextMatchLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
+  cardTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  nextMatchVs: {
-    color: '#FFF',
-    fontSize: 18,
+  iconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  cardTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 4,
+    letterSpacing: 0.5,
   },
-  nextMatchDate: {
-    color: '#FFF',
+  cardSubtitle: {
     fontSize: 14,
     fontWeight: '500',
   },
-  bellButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  cardNoImage: {
+    padding: 20, 
+    justifyContent: 'flex-end', 
+    height: '100%', 
+    borderRadius: 24
   },
 
-  // QUICK MENU
-  quickMenuContainer: {
+  // Info Card Styles
+  infoCard: {
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  infoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  infoIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  infoSub: {
+    fontSize: 13,
+  },
+
+  // Grid Styles
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    gap: 15,
   },
-  menuItem: {
-    width: '48%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
+  squareBtn: {
+    width: (width - 40 - 15) / 2, // Largeur dynamique (Ecran - Padding - Gap) / 2
+    height: 100,
     borderRadius: 20,
+    padding: 15,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  squareIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
-  menuText: {
-    fontWeight: '600',
+  squareTitle: {
+    fontWeight: '700',
     fontSize: 14,
+    marginLeft: 4,
   },
 });
