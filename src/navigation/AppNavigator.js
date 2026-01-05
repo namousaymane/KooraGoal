@@ -106,7 +106,7 @@ export default function AppNavigator() {
           <Tab.Screen name="News" component={NewsScreen} options={{ title: t('nav_news') }} />
           <Tab.Screen name="Matches" component={MatchesScreen} options={{ title: t('nav_matches') }} />
           <Tab.Screen name="Favorites" component={FavoritesScreen} options={{ title: t('nav_favorites') }} />
-          <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ title: t('nav_profile') }} />
+          <Tab.Screen name="ProfileTab" component={ProfileStack} options={{ title: t('nav_profile') }} />
         </Tab.Navigator>
       )}
     </NavigationContainer>
